@@ -63,8 +63,11 @@ app.get('/api/proxy', async (req, res) => {
 
         console.log(`Final Executable Choice: ${chromePath}`);
         
+                // Hardcode the path to match the directory mapped by your shell script
+        const stableChromePath = '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome';
+        
         browser = await puppeteer.launch({
-            executablePath: chromePath,
+            executablePath: stableChromePath,
             headless: true,
             args: [
                 '--no-sandbox',
