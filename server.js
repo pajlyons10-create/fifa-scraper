@@ -2,21 +2,19 @@ const express = require('express');
 const cors = require('cors');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+const chromium = require('@sparticuz/chromium-min');
 
-// Activate the stealth plugin to hide from Cloudflare
 puppeteer.use(StealthPlugin());
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Completely open CORS so InfinityFree can read the data
 app.use(cors());
 
 app.get('/', (req, res) => {
-    res.send("Stealth Scraper is Online.");
+    res.send("Bundled Stealth Scraper is Online.");
 });
 
-// The dynamic API endpoint
 app.get('/api/proxy', async (req, res) => {
     const targetUrl = req.query.url;
 
@@ -26,10 +24,18 @@ app.get('/api/proxy', async (req, res) => {
 
     let browser;
     try {
-        console.log(`Spinning up stealth browser for: ${targetUrl}`);
+        console.log(`Launching bundled browser for: ${targetUrl}`);
+        
+        // This grabs the stable pre-compiled path that survives deployments
+        const executablePath = await chromium.executablePath(
+            `https://github.com/Sparticuz/chromium/releases/download/v123.0.1/chromium-v123.0.1-pack.tar`
+        );
+
         browser = await puppeteer.launch({
+            executablePath: executablePath,
             headless: true,
             args: [
+                ...chromium.args,
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
@@ -38,11 +44,10 @@ app.get('/api/proxy', async (req, res) => {
         });
 
         const page = await browser.newPage();
+        await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         
-        // Wait until the network is quiet (meaning Cloudflare is done loading)
         await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 30000 });
 
-        // Extract the raw JSON from the browser window
         const rawText = await page.evaluate(() => document.body.innerText);
         const data = JSON.parse(rawText);
 
@@ -52,10 +57,10 @@ app.get('/api/proxy', async (req, res) => {
     } catch (error) {
         if (browser) await browser.close();
         console.error(error);
-        res.status(500).json({ error: "Scraping failed or blocked by firewall.", details: error.message });
+        res.status(500).json({ error: "Scraping deployment error.", details: error.message });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`Stealth Scraper running on port ${PORT}`);
+    console.log(`Scraper running on port ${PORT}`);
 });
