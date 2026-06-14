@@ -2,8 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const fs = require('fs');
-const path = require('path');
 
 puppeteer.use(StealthPlugin());
 
@@ -13,27 +11,8 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 
 app.get('/', (req, res) => {
-    res.send("Smart Path Scraper is Online.");
+    res.send("Dockerized Stealth Scraper is Online.");
 });
-
-// Helper function to scan the cache directory for any Chrome executable
-function findChromeExecutable() {
-    const baseCacheDir = '/opt/render/.cache/puppeteer/chrome';
-    
-    if (!fs.existsSync(baseCacheDir)) {
-        return null;
-    }
-
-    // Read the folders inside (e.g., 'linux-127.0.6533.88' or similar)
-    const folders = fs.readdirSync(baseCacheDir);
-    for (const folder of folders) {
-        const expectedPath = path.join(baseCacheDir, folder, 'chrome-linux64', 'chrome');
-        if (fs.existsSync(expectedPath)) {
-            return expectedPath;
-        }
-    }
-    return null;
-}
 
 app.get('/api/proxy', async (req, res) => {
     const targetUrl = req.query.url;
@@ -44,26 +23,19 @@ app.get('/api/proxy', async (req, res) => {
 
     let browser;
     try {
-        const chromePath = findChromeExecutable();
-        
-        if (!chromePath) {
-            throw new Error(`Chrome binary not found anywhere inside /opt/render/.cache/puppeteer/chrome`);
-        }
-
-        console.log(`Launching browser using auto-detected path: ${chromePath}`);
+        console.log(`Launching containerized Chromium for: ${targetUrl}`);
         
         browser = await puppeteer.launch({
-            executablePath: chromePath,
+            // Docker maps standard Linux installations directly to this path
+            executablePath: '/usr/bin/chromium',
             headless: true,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
                 '--disable-gpu',
-                '--no-first-run',
                 '--no-zygote',
-                '--single-process',
-                '--disable-extensions'
+                '--single-process'
             ]
         });
 
@@ -88,5 +60,5 @@ app.get('/api/proxy', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Scraper listening on port ${PORT}`);
+    console.log(`Docker scraper listening on port ${PORT}`);
 });
