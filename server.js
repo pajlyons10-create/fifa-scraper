@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 
 app.get('/', (req, res) => {
-    res.send("Dockerized Stealth Scraper is Online.");
+    res.send("Auto-Path Stealth Scraper is Online.");
 });
 
 app.get('/api/proxy', async (req, res) => {
@@ -23,11 +23,10 @@ app.get('/api/proxy', async (req, res) => {
 
     let browser;
     try {
-        console.log(`Launching containerized Chromium for: ${targetUrl}`);
+        console.log(`Launching Auto-Managed Chrome for: ${targetUrl}`);
         
+        // No executablePath required anymore! Puppeteer handles it out of the box.
         browser = await puppeteer.launch({
-            // Changed back to the official Docker Linux path
-            executablePath: '/usr/bin/chromium',
             headless: true,
             args: [
                 '--no-sandbox',
@@ -60,5 +59,5 @@ app.get('/api/proxy', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Docker scraper listening on port ${PORT}`);
+    console.log(`Scraper listening on port ${PORT}`);
 });
