@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const chromium = require('@sparticuz/chromium-min');
 
 puppeteer.use(StealthPlugin());
 
@@ -12,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 
 app.get('/', (req, res) => {
-    res.send("Bundled Stealth Scraper is Online.");
+    res.send("Lightweight Scraper is Online.");
 });
 
 app.get('/api/proxy', async (req, res) => {
@@ -24,22 +23,22 @@ app.get('/api/proxy', async (req, res) => {
 
     let browser;
     try {
-        console.log(`Launching bundled browser for: ${targetUrl}`);
+        console.log(`Scraping via native system browser: ${targetUrl}`);
         
-        // This grabs the stable pre-compiled path that survives deployments
-        const executablePath = await chromium.executablePath(
-            `https://github.com/Sparticuz/chromium/releases/download/v123.0.1/chromium-v123.0.1-pack.tar`
-        );
-
         browser = await puppeteer.launch({
-            executablePath: executablePath,
+            // Tells Puppeteer to use the native browser installed by Render's buildpack
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome',
             headless: true,
+            // Strict diet flags to stop Chrome from eating up memory
             args: [
-                ...chromium.args,
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
                 '--disable-dev-shm-usage',
-                '--disable-blink-features=AutomationControlled'
+                '--disable-gpu',
+                '--no-first-run',
+                '--no-zygote',
+                '--single-process',
+                '--disable-extensions'
             ]
         });
 
@@ -55,12 +54,14 @@ app.get('/api/proxy', async (req, res) => {
         res.json(data);
 
     } catch (error) {
-        if (browser) await browser.close();
+        if (browser) {
+            try { await browser.close(); } catch(e) {}
+        }
         console.error(error);
-        res.status(500).json({ error: "Scraping deployment error.", details: error.message });
+        res.status(500).json({ error: "Scraper execution error.", details: error.message });
     }
 });
 
 app.listen(PORT, () => {
-    console.log(`Scraper running on port ${PORT}`);
+    console.log(`Lightweight scraper listening on port ${PORT}`);
 });
