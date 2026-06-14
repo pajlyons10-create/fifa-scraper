@@ -3,6 +3,7 @@ const cors = require('cors');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 const fs = require('fs');
+const path = require('path');
 
 puppeteer.use(StealthPlugin());
 
@@ -12,8 +13,27 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 
 app.get('/', (req, res) => {
-    res.send("Dynamic Path Scraper is Online.");
+    res.send("Smart Path Scraper is Online.");
 });
+
+// Helper function to scan the cache directory for any Chrome executable
+function findChromeExecutable() {
+    const baseCacheDir = '/opt/render/.cache/puppeteer/chrome';
+    
+    if (!fs.existsSync(baseCacheDir)) {
+        return null;
+    }
+
+    // Read the folders inside (e.g., 'linux-127.0.6533.88' or similar)
+    const folders = fs.readdirSync(baseCacheDir);
+    for (const folder of folders) {
+        const expectedPath = path.join(baseCacheDir, folder, 'chrome-linux64', 'chrome');
+        if (fs.existsSync(expectedPath)) {
+            return expectedPath;
+        }
+    }
+    return null;
+}
 
 app.get('/api/proxy', async (req, res) => {
     const targetUrl = req.query.url;
@@ -24,50 +44,16 @@ app.get('/api/proxy', async (req, res) => {
 
     let browser;
     try {
-        // Look everywhere Render or Puppeteer could have stored the browser binary
-        const possiblePaths = [
-            process.env.PUPPETEER_EXECUTABLE_PATH,
-            '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome',
-            '/opt/render/project/src/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome',
-            '/usr/bin/google-chrome',
-            '/usr/bin/chromium-browser'
-        ];
-
-        let chromePath = '';
-        for (const path of possiblePaths) {
-            if (path && fs.existsSync(path)) {
-                chromePath = path;
-                break;
-            }
-        }
-
-        // Ultimate fallback: if no path exists, look for any executable inside the cache directory recursively
-        if (!chromePath) {
-            console.log("Standard paths missed. Searching cache directory...");
-            const searchCache = (dir) => {
-                if (!fs.existsSync(dir)) return null;
-                const files = fs.readdirSync(dir);
-                for (const file of files) {
-                    const fullPath = `${dir}/${file}`;
-                    if (fs.statSync(fullPath).isDirectory()) {
-                        const found = searchCache(fullPath);
-                        if (found) return found;
-                    } else if (file === 'chrome' || file === 'chromium') {
-                        return fullPath;
-                    }
-                }
-                return null;
-            };
-            chromePath = searchCache('/opt/render/.cache/puppeteer') || '/usr/bin/google-chrome';
-        }
-
-        console.log(`Final Executable Choice: ${chromePath}`);
+        const chromePath = findChromeExecutable();
         
-                // Hardcode the path to match the directory mapped by your shell script
-        const stableChromePath = '/opt/render/.cache/puppeteer/chrome/linux-127.0.6533.88/chrome-linux64/chrome';
+        if (!chromePath) {
+            throw new Error(`Chrome binary not found anywhere inside /opt/render/.cache/puppeteer/chrome`);
+        }
+
+        console.log(`Launching browser using auto-detected path: ${chromePath}`);
         
         browser = await puppeteer.launch({
-            executablePath: stableChromePath,
+            executablePath: chromePath,
             headless: true,
             args: [
                 '--no-sandbox',
