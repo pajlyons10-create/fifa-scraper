@@ -23,13 +23,13 @@ app.get('/api/proxy', async (req, res) => {
 
     let browser;
     try {
-        console.log(`Scraping via native system browser: ${targetUrl}`);
+        // Look at Render's native buildpack path first, fall back to standard Linux locations if empty
+        const chromePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/opt/render/project/src/.cache/puppeteer/chrome' || '/usr/bin/google-chrome';
+        console.log(`Launching browser using path: ${chromePath}`);
         
         browser = await puppeteer.launch({
-            // Tells Puppeteer to use the native browser installed by Render's buildpack
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome',
+            executablePath: chromePath,
             headless: true,
-            // Strict diet flags to stop Chrome from eating up memory
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -45,6 +45,7 @@ app.get('/api/proxy', async (req, res) => {
         const page = await browser.newPage();
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
         
+        console.log(`Navigating to target endpoint: ${targetUrl}`);
         await page.goto(targetUrl, { waitUntil: 'networkidle2', timeout: 30000 });
 
         const rawText = await page.evaluate(() => document.body.innerText);
