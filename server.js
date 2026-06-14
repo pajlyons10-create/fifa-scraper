@@ -26,8 +26,8 @@ app.get('/api/proxy', async (req, res) => {
         console.log(`Launching containerized Chromium for: ${targetUrl}`);
         
         browser = await puppeteer.launch({
-            // Changed from /usr/bin/chromium to /usr/bin/chromium-browser
-            executablePath: '/usr/bin/chromium-browser',
+            // Changed back to the official Docker Linux path
+            executablePath: '/usr/bin/chromium',
             headless: true,
             args: [
                 '--no-sandbox',
